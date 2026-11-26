@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>기후 정상회의</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 국제회의장: 짙은 남색 의장석 + 밝은 회의 자료 카드. 온도는 파랑→주황→빨강으로만 표현한다. */
+:root {
+  color-scheme: light;
+  --bg: #eef1f4;
+  --paper: #ffffff;
+  --ink: #18222b;
+  --ink-soft: #55636e;
+  --navy: #1b2c45;
+  --navy-2: #2a4266;
+  --un: #3a7bd5;
+  --cool: #3a8ed1; --warm: #f0a12f; --hot: #d8432f;
+  --ok: #2e7d4f; --alert: #c2412d;
+  --line: #ccd5de;
+  --font-display: "Do Hyeon", "Black Han Sans", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.6; padding: 14px 14px 48px; }
+.wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+body.hostmode .wrap { max-width: 1500px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; margin: 0; line-height: 1.25; text-wrap: balance; }
+h1 { font-size: clamp(36px, 7vw, 58px); }
+h2 { font-size: clamp(24px, 4.5vw, 32px); }
+h3 { font-size: 21px; }
+p { margin: 0; }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--warm); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px clamp(14px, 3.5vw, 28px); }
+.hero { border-top: 8px solid var(--navy); display: grid; gap: 12px; }
+.eyebrow { font-size: 14px; font-weight: 700; color: var(--navy-2); letter-spacing: .04em; }
+.note { font-size: 14px; color: var(--ink-soft); }
+.rules { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.btn { border: 2px solid var(--navy); background: var(--navy); color: #fff; border-radius: 9px; padding: 11px 20px; font-weight: 700; }
+.btn:hover:not(:disabled) { background: var(--navy-2); }
+.btn.ghost { background: transparent; color: var(--navy); }
+.btn.ghost:hover:not(:disabled) { background: #e7ecf2; }
+.btn.warm { background: var(--warm); border-color: #b66f0c; color: #3a2300; }
+.btn.warm:hover:not(:disabled) { background: #f6b650; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+input { font: inherit; font-size: 20px; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; color: var(--ink); width: 100%; }
+.pill { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 13px; font-weight: 700; background: #e3e8ee; color: var(--ink-soft); }
+.pill.on { background: #e2f1e7; color: var(--ok); } .pill.off { background: #f8e4df; color: var(--alert); }
+.msg { border-radius: 8px; padding: 10px 14px; font-weight: 500; }
+.msg.ok { background: #e2f1e7; color: var(--ok); border: 1px solid #a9d3b7; }
+.msg.bad { background: #f8e4df; color: var(--alert); border: 1px solid #e5b2a7; }
+.msg.info { background: #eef4fc; color: #1f4f8f; border: 1px solid #bcd3f0; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 999px; font-weight: 700; z-index: 30; max-width: 92vw; text-align: center; }
+
+/* 나라 */
+.countries { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.ctry { border: 3px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 12px; text-align: left; display: grid; gap: 4px; }
+.ctry[aria-pressed="true"] { border-color: var(--navy); box-shadow: 0 0 0 3px #c9d6ea; }
+.ctry .nm { font-family: var(--font-display); font-size: 22px; }
+.flag { font-size: 24px; vertical-align: -3px; margin-right: 6px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 1px 7px; color: #fff; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.stat { background: #f4f6f9; border-radius: 8px; padding: 6px 8px; }
+.stat b { display: block; font-family: var(--font-display); font-size: 24px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--ink-soft); }
+.stance { background: #f4f6f9; border-left: 5px solid var(--navy-2); padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: 15.5px; }
+
+/* 선택 */
+.levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.lv { border: 3px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 6px; text-align: center; display: grid; gap: 2px; }
+.lv b { font-family: var(--font-display); font-size: 20px; font-weight: 400; }
+.lv span { font-size: 12px; color: var(--ink-soft); }
+.lv[aria-pressed="true"] { border-color: var(--navy); background: var(--navy); color: #fff; }
+.lv[aria-pressed="true"] span { color: #d6e0ef; }
+.preview { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; font-size: 14.5px; }
+.preview div { background: #f4f6f9; border-radius: 8px; padding: 6px 10px; }
+.preview b { font-variant-numeric: tabular-nums; }
+.opts { display: grid; gap: 8px; }
+.opt { text-align: left; border: 2px solid var(--line); background: #fff; border-radius: 10px; padding: 9px 14px; font-size: 16px; }
+.opt.right { border-color: var(--ok); background: #e2f1e7; } .opt.wrong { border-color: var(--alert); background: #f8e4df; }
+
+/* 선생님 화면 */
+.host-top { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; }
+.room-code { font-family: var(--font-display); font-size: clamp(60px, 8vw, 104px); line-height: 1; color: var(--navy); letter-spacing: .06em; }
+.qr { background: #fff; padding: 10px; border-radius: 10px; border: 1px solid var(--line); }
+.qr img, .qr canvas { display: block; width: 210px; height: 210px; }
+.stage { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 14px; align-items: start; }
+.thermo { display: grid; gap: 8px; justify-items: center; text-align: center; }
+.thermo svg { width: 100%; max-width: 230px; height: auto; }
+.temp { font-family: var(--font-display); font-size: 58px; line-height: 1; font-variant-numeric: tabular-nums; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 16px; }
+.tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: center; font-variant-numeric: tabular-nums; }
+.tbl th { font-size: 13px; color: var(--ink-soft); font-weight: 700; background: #f4f6f9; }
+.tbl td:first-child, .tbl th:first-child { text-align: left; }
+.tbl .big { font-family: var(--font-display); font-size: 26px; }
+.neg { color: var(--alert); font-weight: 700; } .pos { color: var(--ok); font-weight: 700; }
+.kept { color: var(--ok); font-weight: 700; } .broke { color: var(--alert); font-weight: 700; }
+.factcard { border-left: 6px solid var(--un); background: #f1f6fd; padding: 10px 14px; border-radius: 0 10px 10px 0; display: grid; gap: 4px; }
+.impact { border-left: 6px solid var(--hot); background: #fdf1ee; padding: 10px 14px; border-radius: 0 10px 10px 0; }
+.phasebar { display: flex; gap: 6px; flex-wrap: wrap; }
+.phasebar span { padding: 4px 12px; border-radius: 999px; background: #e3e8ee; color: var(--ink-soft); font-weight: 700; font-size: 14px; }
+.phasebar span.on { background: var(--navy); color: #fff; }
+.bigclock { font-family: var(--font-display); font-size: 40px; font-variant-numeric: tabular-nums; }
+.sbar { position: sticky; top: 0; z-index: 5; color: #fff; border-radius: 10px; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; box-shadow: 0 4px 10px rgba(0,0,0,.12); }
+.sbar b { font-family: var(--font-display); font-size: 22px; font-weight: 400; }
+.qlist { margin: 0; padding-left: 22px; display: grid; gap: 6px; font-size: 18px; }
+@media (max-width: 1000px) { .stage { grid-template-columns: 1fr; } }
+@media (max-width: 800px) { .host-top { grid-template-columns: 1fr; } }
+@media (max-width: 420px) { .stats { grid-template-columns: repeat(2, 1fr); } .levels { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/* =================== 게임 설정 (실제 통계가 아닌 게임용 수치) =================== */
+// e: 한 라운드 기본 배출량, inc: 라운드 수입, c: 감축 1단계 비용, v: 피해 취약도, s: 처음 동전
+const C = {
+  1: { n: "미국", f: "🇺🇸", col: "#2f5fb3", kind: "선진국", e: 7, inc: 10, c: 2, v: 2, s: 20,
+       st: "세계 최대 경제국으로, 산업 혁명 이후 오랫동안 많은 온실가스를 배출해 왔습니다. 일자리와 경제 성장을 지키면서 얼마나 줄일지 정해야 합니다." },
+  2: { n: "유럽 연합(프랑스)", f: "🇪🇺", col: "#1f8a8a", kind: "선진국", e: 5, inc: 8, c: 2, v: 2, s: 18,
+       st: "\"선진국이 앞장서서 온실가스를 줄이는 책임을 피하지 않겠다. 하지만 배출량이 빠르게 늘고 있는 중국과 인도도 적극 참여해야 한다.\" (교과서 183쪽 자료 바탕)" },
+  3: { n: "중국", f: "🇨🇳", col: "#c43b3b", kind: "개발 도상국", e: 12, inc: 10, c: 3, v: 3, s: 15,
+       st: "\"선진국은 산업 혁명 이후 많은 이산화 탄소를 배출하며 성장했다. 이제 성장하려는 우리에게 규제를 가하는 것은 발전을 가로막는 일이다. 선진국이 앞장서야 한다.\" (교과서 183쪽 자료 바탕)" },
+  4: { n: "인도", f: "🇮🇳", col: "#e07b12", kind: "개발 도상국", e: 6, inc: 7, c: 2, v: 4, s: 10,
+       st: "인구가 많고 산업화가 빠르게 진행 중입니다. 아직 가난한 사람이 많아 경제 성장이 꼭 필요하지만, 폭염과 홍수 피해도 커지고 있습니다." },
+  5: { n: "몰디브", f: "🇲🇻", col: "#7b4fc9", kind: "섬나라", e: 1, inc: 3, c: 1, v: 5, s: 6,
+       st: "해수면 상승으로 2100년에 국토 전체가 잠길 수 있다는 전망이 나옵니다. 2009년 바닷속에서 수중 각료 회의를 열어 세계에 경고했습니다. (교과서 180쪽)" },
+  6: { n: "말리", f: "🇲🇱", col: "#2f9e5b", kind: "저개발국", e: 1, inc: 3, c: 1, v: 5, s: 4,
+       st: "\"지구 온난화로 극심한 가뭄을 겪고 있다. 지금도 아이들이 굶주리는데 누구 책임인지 따질 여유가 없다.\" (교과서 183쪽 자료 바탕)" },
+};
+const G = [1, 2, 3, 4, 5, 6];
+const LV = [{ n: "그대로", p: 0 }, { n: "조금 감축", p: 25 }, { n: "많이 감축", p: 50 }, { n: "대폭 감축", p: 75 }];
+const ROUNDS = 5, YEAR0 = 2030, T0 = 1.2, K = 0.011, GOAL = 2.0, BONUS = 10, AID = [5, 6];
+const ROUND_FACT = [
+  { h: "1992년 · 기후 변화 협약", b: "온실가스를 줄이기 위한 기후 변화 협약이 1992년 브라질 리우 환경 개발 회의에서 처음 채택되었습니다. (교과서 182쪽)" },
+  { h: "1997년 · 교토 의정서", b: "기후 변화 협약의 구체적인 이행 방안으로 교토 의정서가 채택되었습니다. 주요 선진국만 감축 의무를 졌습니다. (교과서 182~183쪽)" },
+  { h: "2015년 · 파리 협정", b: "지구 평균 기온 상승을 산업 혁명 이전보다 2℃보다 '훨씬 작게', 되도록 1.5℃까지로 제한하자고 합의했습니다. 선진국과 개발 도상국 구분 없이 모든 나라가 스스로 정한 방식으로 감축에 나섭니다. (교과서 183쪽)" },
+  { h: "2009년 · 몰디브 수중 각료 회의", b: "몰디브 대통령과 장관들은 바닷속 4~5m 아래에서 회의를 열고 '이 위기는 몰디브만의 문제가 아니라 전 세계의 문제'라고 경고했습니다. (교과서 180쪽)" },
+  { h: "우리나라의 노력", b: "우리나라도 환경 오염을 줄이는 정책을 추진하고, 국가 기후 변화 적응 대책을 세워 지구 온난화 피해를 줄이려 노력하고 있습니다. (교과서 182쪽)" },
+];
+// 『기후 변화의 경제학』(니컬러스 스턴) 표, 교과서 182쪽
+const IMPACT = [
+  [1, "안데스산맥의 만년설이 녹고, 언 땅이 녹아 러시아·캐나다의 건물과 도로가 손상됩니다."],
+  [2, "남아프리카와 지중해의 물 공급량이 20~30% 줄고, 열대 지역의 농작물 생산량이 급격히 줄어듭니다."],
+  [3, "식량이 모자라 굶주리는 사람이 5억 명이 넘고, 최대 50%의 생물이 멸종 위기에 놓입니다."],
+  [4, "남아프리카와 지중해의 물 공급량이 30~50% 줄고, 해안 지역에서 최대 3억 명이 홍수 피해를 겪습니다."],
+];
+const QZ = [
+  ["대기 중 온실가스 농도가 급격히 올라 지구 평균 기온이 높아지는 현상은?", ["지구 온난화", "열섬 현상", "사막화", "엘니뇨"], "온실가스 농도가 올라 지구의 에너지 균형이 무너지면서 평균 기온이 높아지는 현상을 지구 온난화라고 합니다. (179쪽)"],
+  ["온실가스 가운데 지구 온난화에 가장 큰 영향을 미치는 것은?", ["이산화 탄소", "산소", "질소", "아르곤"], "지구 온난화에 가장 큰 영향을 미치는 온실가스는 이산화 탄소입니다. 그래서 숲을 무분별하게 파괴하는 것도 온난화를 가속합니다. (179쪽)"],
+  ["기후에 인간의 활동이 강하게 영향을 미치기 시작한 때는?", ["산업 혁명 이후", "신석기 혁명 이후", "제2차 세계 대전 이후", "2000년 이후"], "산업 혁명 이후 석탄·석유 등 화석 연료 사용이 늘면서 온실가스 배출이 크게 늘었습니다. (179쪽)"],
+  ["빙하가 녹아 해수면이 상승할 때 범람·침수 피해를 자주 겪는 나라는?", ["방글라데시", "스위스", "몽골", "볼리비아"], "방글라데시처럼 해안 저지대에 있는 나라는 수시로 범람과 침수 피해를 겪습니다. (180쪽)"],
+  ["지구 온난화의 영향으로 알맞지 않은 것은?", ["고산 식물의 분포 범위 확대", "빙하 면적 감소", "해수면 상승", "기상 이변 증가"], "기온이 오르면 고산 식물은 분포 범위가 줄거나 멸종할 위험이 커집니다. (181쪽)"],
+  ["1997년 채택된, 주요 선진국만 감축 의무를 진 기후 변화 협약의 이행 방안은?", ["교토 의정서", "파리 협정", "람사르 협약", "몬트리올 의정서"], "교토 의정서는 1997년 채택되었고 주요 선진국만을 대상으로 했습니다. (182~183쪽)"],
+  ["파리 협정이 교토 의정서와 가장 크게 다른 점은?", ["선진국과 개발 도상국 구분 없이 모든 나라가 감축에 참여한다", "선진국만 감축 의무를 진다", "감축 목표가 없다", "아시아 국가만 참여한다"], "파리 협정은 모든 국가가 스스로 정한 방식에 따라 2020년부터 의무적으로 감축에 나서기로 한 점이 중요합니다. (183쪽)"],
+  ["기후 변화에 대처하는 방안으로 가장 알맞은 것은?", ["전 지구적 차원에서 함께 노력한다", "배출량이 많은 한 나라만 노력한다", "피해를 입는 나라만 노력한다", "각자 알아서 하고 협력하지 않는다"], "기후 변화 피해는 선진국·개발 도상국·저개발국 모두에 나타나므로 전 지구적 차원의 공동 노력이 필요합니다. (182쪽)"],
+  ["지구의 평균 기온이 오르면서 늘어나는 여름철 현상은?", ["폭염과 열대야", "폭설과 한파", "황사 감소", "빙하 증가"], "평균 기온이 오르면 폭염·열대야 같은 여름철 고온 현상이 늘어납니다. 우리나라도 열대야 발생 횟수가 늘고 있습니다. (180쪽)"],
+  ["2015년 파리 협정에서 합의한 기온 상승 제한 목표는?", ["2℃보다 훨씬 작게, 되도록 1.5℃까지", "5℃ 이하", "제한하지 않음", "10℃ 이하"], "산업 혁명 이전과 비교해 상승 폭을 2℃보다 '훨씬 작게', 되도록 1.5℃까지 낮추도록 노력하기로 했습니다. (183쪽)"],
+];
+
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const $ = id => document.getElementById(id);
+const app = $("app");
+const fmtT = t => (Math.round(t * 100) / 100).toFixed(2) + "℃";
+const sgn = n => (n > 0 ? "+" : "") + n;
+function render(h) { app.innerHTML = h; }
+let toastT = 0;
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2600); }
+const tempCol = t => t < 1.5 ? "var(--cool)" : t < 2 ? "var(--warm)" : "var(--hot)";
+const cname = g => `<span class="flag" aria-hidden="true">${C[g].f}</span>${esc(C[g].n)}`;
+const roundCost = (g, lv) => lv * C[g].c;
+const roundEmit = (g, lv) => C[g].e * (1 - LV[lv].p / 100);
+
+/* =================== 실시간 연결 =================== */
+const params = new URLSearchParams(location.search);
+const DB = (u => /^https?:\/\/[a-z0-9.:-]+$/i.test(u) && /firebaseio\.com|firebasedatabase\.app|localhost/.test(u) ? u : "")((params.get("db") || "").replace(/\/+$/, "")) || "https://gwangcheon-racing-default-rtdb.asia-southeast1.firebasedatabase.app";
+const SITE = "https://wjsrhdwlfl-eng.github.io/gwangcheon-games/climate/";
+function dbReq(path, method, val) {
+  let url = `${DB}/${path}.json`;
+  if (method === "GET") return fetch(url).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+  if (method !== "POST") url += `?x-http-method-override=${method}`;
+  const opt = { method: "POST" }; if (val !== undefined) opt.body = JSON.stringify(val);
+  return fetch(url, opt).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+}
+const roomKey = code => "k" + code;
+let mirror = {}, es = null, onRoom = () => {};
+function subscribe(code, cb) {
+  mirror = {}; onRoom = cb; if (es) es.close();
+  es = new EventSource(`${DB}/rooms/${roomKey(code)}.json`);
+  const setConn = on => document.querySelectorAll(".conn").forEach(p => { p.className = "conn pill " + (on ? "on" : "off"); p.textContent = on ? "연결됨" : "다시 연결 중"; });
+  const h = merge => e => { try { const m = JSON.parse(e.data); applyAt(m.path, m.data, merge); setConn(true); onRoom(); } catch (err) {} };
+  es.addEventListener("put", h(false)); es.addEventListener("patch", h(true));
+  es.onopen = () => setConn(true); es.onerror = () => setConn(false);
+}
+function applyAt(path, data, merge) {
+  const parts = path.split("/").filter(Boolean);
+  if (!parts.length) { if (!merge) { mirror = data && typeof data === "object" ? data : {}; return; } for (const k in data) { if (data[k] === null) delete mirror[k]; else mirror[k] = data[k]; } return; }
+  let o = mirror;
+  for (let i = 0; i < parts.length - 1; i++) { const p = parts[i]; if (!o[p] || typeof o[p] !== "object") o[p] = {}; o = o[p]; }
+  const last = parts[parts.length - 1];
+  if (merge) { if (!o[last] || typeof o[last] !== "object") o[last] = {}; for (const k in data) { if (data[k] === null) delete o[last][k]; else o[last][k] = data[k]; } }
+  else { if (data === null) delete o[last]; else o[last] = data; }
+}
+const NET = { code: null, pid: null, role: null };
+const rk = () => `rooms/${roomKey(NET.code)}`;
+function myPid() { let p = null; try { p = localStorage.getItem("cs-pid"); } catch (e) {} if (!p) { p = Math.random().toString(36).slice(2, 10); try { localStorage.setItem("cs-pid", p); } catch (e) {} } return p; }
+const studentLink = code => `${location.origin}${location.pathname}?room=${code}${params.get("db") ? "&db=" + encodeURIComponent(params.get("db")) : ""}`;
+function goHome() { if (es) { es.close(); es = null; } params.delete("room"); history.replaceState(null, "", location.pathname + (params.get("db") ? "?db=" + encodeURIComponent(params.get("db")) : "")); home(); }
+
+/* =================== 계산 (선생님 기기가 결과를 확정) =================== */
+const st = () => mirror.state || {};
+const coinsOf = g => ((mirror.coins || {})[g] ?? C[g].s);
+const pledgeOf = (r, g) => ((mirror.pledge || {})["r" + r] || {})[g];
+const decOf = (r, g) => ((mirror.dec || {})["r" + r] || {})[g];
+const quizOf = (r, g) => ((mirror.quiz || {})["r" + r] || {})[g];
+const resOf = r => (mirror.res || {})["r" + r];
+function membersOf(g) { return Object.values(mirror.players || {}).filter(p => p.g === g); }
+function computeRound(r) {
+  const T1start = st().T ?? T0;
+  let E = 0, fund = 0; const c = {};
+  G.forEach(g => {
+    const d = decOf(r, g) || { lv: 0, fund: 0, none: 1 };
+    const lv = d.lv | 0, before = coinsOf(g);
+    const f = Math.max(0, Math.min(3, d.fund | 0, Math.max(0, before + C[g].inc - roundCost(g, lv))));
+    E += roundEmit(g, lv); fund += f;
+    c[g] = { lv, fund: f, inc: C[g].inc, cost: roundCost(g, lv), quiz: quizOf(r, g) && quizOf(r, g).ok ? 1 : 0, before, pl: pledgeOf(r, g) ?? null, none: d.none ? 1 : 0 };
+  });
+  const T1 = Math.round((T1start + E * K) * 1000) / 1000;
+  const aidEach = Math.floor(fund / AID.length), aidLeft = fund - aidEach * AID.length;
+  G.forEach(g => {
+    const x = c[g];
+    x.dmg = Math.max(0, Math.round((T1 - 1.0) * C[g].v));
+    x.aid = AID.includes(g) ? aidEach + (g === AID[0] ? aidLeft : 0) : 0;
+    x.after = x.before + x.inc - x.cost - x.fund - x.dmg + x.aid + x.quiz;
+  });
+  return { T0: T1start, T1, E: Math.round(E * 100) / 100, fund, c };
+}
+
+/* =================== 첫 화면 =================== */
+function home() {
+  NET.role = null; document.body.classList.remove("hostmode");
+  const code = params.get("room");
+  if (code && /^\d{4}$/.test(code)) return joinView(code);
+  render(`
+  <section class="card hero">
+    <span class="eyebrow">중학교 사회② Ⅹ. 환경 문제와 지속 가능한 환경 · 모둠 역할 협상</span>
+    <h1>기후 정상회의</h1>
+    <p>여섯 모둠이 각각 한 나라의 대표가 되어 ${YEAR0}년부터 ${YEAR0 + (ROUNDS - 1) * 10}년까지 다섯 번의 정상회의에 참석합니다. 우리나라의 경제도 지키면서, 지구 평균 기온 상승을 <b>${GOAL.toFixed(1)}℃ 아래</b>로 막을 수 있을까요?</p>
+    <ul class="rules">
+      <li><b>협상·공약</b>: 다른 나라와 자유롭게 이야기하고, 이번에 얼마나 줄일지 <b>공개 약속</b>을 합니다.</li>
+      <li><b>비밀 결정</b>: 실제 감축 단계와 기후 기금(섬나라·저개발국 지원)을 몰래 정합니다. 감축할수록 비용이 듭니다.</li>
+      <li><b>결과 공개</b>: 모든 나라의 배출량을 합쳐 기온이 오르고, 기온이 높을수록 피해가 커집니다. 약속을 지켰는지도 공개됩니다.</li>
+      <li>마지막에 기온이 ${GOAL.toFixed(1)}℃ 이하이면 모든 나라가 보너스 ${BONUS}동전을 받습니다.</li>
+    </ul>
+    <p class="note">게임 속 배출량·동전·피해 수치는 이해를 돕기 위한 게임 설정이며 실제 통계가 아닙니다.</p>
+  </section>
+  <section class="split">
+    <div class="card" style="display:grid;gap:10px"><h2>학생</h2><p>선생님이 알려 준 <b>방 번호</b>를 입력하거나 QR 코드를 찍어 들어오세요.</p>
+      <div class="actions"><input id="codeIn" inputmode="numeric" maxlength="4" placeholder="방 번호 4자리" style="flex:1 1 140px"><button class="btn" id="goCode" type="button">들어가기</button></div></div>
+    <div class="card" style="display:grid;gap:10px"><h2>선생님</h2><p>전자칠판에서 방을 만들면 방 번호·QR 코드와 회의 진행판(온도계·나라별 현황)이 나옵니다.</p>
+      <div class="actions"><button class="btn" id="mkRoom" type="button">방 만들기</button></div></div>
+  </section>
+  <section class="card" style="display:grid;gap:10px"><h2>참가국</h2><div class="countries">${G.map(g => countryCard(g)).join("")}</div></section>
+  <p class="note" style="text-align:center">비상교육 중학교 사회②(최성길 외) Ⅹ단원 · 광천중학교 사회과</p>`);
+  $("goCode").onclick = () => { const c = $("codeIn").value.trim(); if (/^\d{4}$/.test(c)) joinView(c); else toast("방 번호 4자리를 입력하세요."); };
+  $("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") $("goCode").click(); });
+  $("mkRoom").onclick = createRoom;
+}
+function countryCard(g, extra = "") {
+  const c = C[g];
+  return `<div class="ctry" style="border-top:8px solid ${c.col}"><span class="nm">${cname(g)}</span><span><span class="tag" style="background:${c.col}">${c.kind}</span> <span class="note">배출 ${c.e} · 수입 ${c.inc} · 감축 비용 단계당 ${c.c} · 피해 취약도 ${c.v}</span></span>${extra}</div>`;
+}
+
+/* =================== 선생님 =================== */
+const H = { code: null, phaseKey: null, since: 0, ticker: 0 };
+async function createRoom() {
+  const btn = $("mkRoom"); btn.disabled = true; btn.textContent = "방 만드는 중…";
+  try {
+    let code = null;
+    for (let i = 0; i < 6 && !code; i++) { const c = String(1000 + Math.floor(Math.random() * 9000)); const ex = await dbReq(`rooms/${roomKey(c)}/state`, "GET"); if (!ex) code = c; }
+    if (!code) throw new Error("no code");
+    await dbReq(`rooms/${roomKey(code)}`, "PUT", { state: { phase: "lobby", round: 0, T: T0, id: Date.now() } });
+    openHost(code);
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "방 만들기";
+    alert(`데이터베이스에 연결하지 못했습니다. 인터넷 연결을 확인하고, 미리보기 창이 아니라 게임 주소(${SITE})에서 다시 시도하세요.`);
+  }
+}
+function openHost(code) {
+  NET.role = "host"; NET.code = code; H.code = code; H.phaseKey = null;
+  document.body.classList.add("hostmode");
+  render(`<div id="hostRoot"></div>`);
+  subscribe(code, renderHost);
+  clearInterval(H.ticker); H.ticker = setInterval(() => { const el = $("phaseClock"); if (el) { const s = Math.floor((Date.now() - H.since) / 1000); el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; } }, 1000);
+}
+function thermoSVG(T, hist = []) {
+  const lo = 1.0, hi = 4.0, top = 20, bot = 300, y = t => bot - (Math.min(hi, Math.max(lo, t)) - lo) / (hi - lo) * (bot - top);
+  let s = `<svg viewBox="0 0 200 360" role="img" aria-label="지구 평균 기온 ${fmtT(T)}"><rect x="78" y="${top - 8}" width="44" height="${bot - top + 16}" rx="22" fill="#eef1f4" stroke="#9aa8b5" stroke-width="2"/>`;
+  s += `<circle cx="100" cy="${bot + 26}" r="34" fill="${T < 1.5 ? "#3a8ed1" : T < 2 ? "#f0a12f" : "#d8432f"}" stroke="#9aa8b5" stroke-width="2"/>`;
+  s += `<rect x="88" y="${y(T)}" width="24" height="${bot - y(T) + 10}" rx="12" fill="${T < 1.5 ? "#3a8ed1" : T < 2 ? "#f0a12f" : "#d8432f"}"/>`;
+  [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0].forEach(t => { s += `<line x1="122" x2="${t === 1.5 || t === 2 ? 186 : 132}" y1="${y(t)}" y2="${y(t)}" stroke="${t === 2 ? "#d8432f" : t === 1.5 ? "#f0a12f" : "#9aa8b5"}" stroke-width="${t === 2 || t === 1.5 ? 3 : 1.5}"/><text x="${t === 1.5 || t === 2 ? 190 : 136}" y="${y(t) + 5}" font-size="14" text-anchor="${t === 1.5 || t === 2 ? "end" : "start"}" fill="#3c4954" dy="${t === 1.5 || t === 2 ? -8 : 0}">${t.toFixed(1)}℃${t === 2 ? " 목표" : ""}</text>`; });
+  hist.forEach((t, i) => { s += `<circle cx="66" cy="${y(t)}" r="5" fill="#55636e"/><text x="58" y="${y(t) + 4}" font-size="12" text-anchor="end" fill="#55636e">${YEAR0 + i * 10 - 10}</text>`; });
+  return s + `</svg>`;
+}
+function histTemps() { const h = [T0]; for (let r = 1; r <= ROUNDS; r++) { const x = resOf(r); if (x) h.push(x.T1); } return h; }
+function phaseName(ph) { return { pledge: "협상·공약", decide: "비밀 결정", result: "결과 공개" }[ph] || ""; }
+function renderHost() {
+  const s = st(), root = $("hostRoot"); if (!root) return;
+  const key = (s.phase || "lobby") + ":" + (s.round || 0);
+  if (key !== H.phaseKey) { H.phaseKey = key; H.since = Date.now(); root.innerHTML = s.phase === "lobby" || !s.phase ? hostLobbyHTML() : s.phase === "end" ? hostEndHTML() : hostRoundHTML(); bindHost(); }
+  if (!s.phase || s.phase === "lobby") fillLobby(); else if (s.phase === "end") fillEnd(); else fillRound();
+}
+function hostLobbyHTML() {
+  return `<section class="card host-top"><div style="display:grid;gap:8px"><div class="row"><span class="eyebrow">방 번호 · 기후 정상회의</span><span class="conn pill">연결 중</span></div><div class="room-code">${H.code}</div>
+    <p class="note">학생은 QR 코드를 찍거나 링크로 들어와 <b>별명과 대표할 나라(모둠)</b>를 고릅니다.</p>
+    <div class="actions"><input id="linkOut" readonly value="${esc(studentLink(H.code))}" style="flex:1 1 360px;font-size:15px"><button type="button" class="btn ghost" id="copyLink">링크 복사</button></div></div>
+    <div id="qr" class="qr" aria-label="학생 입장 QR 코드"></div></section>
+  <section class="card" style="display:grid;gap:12px"><div class="row"><h2>대표단 입장</h2><span class="note" id="hostCount"></span></div><div class="countries" id="lobbyC"></div>
+    <div class="actions"><button class="btn warm" id="hStart" type="button">제1차 정상회의 시작 (${YEAR0}년)</button><button class="btn ghost" id="hWipe" type="button">방 기록 지우기</button></div></section>`;
+}
+function hostRoundHTML() {
+  const s = st(), r = s.round, f = ROUND_FACT[r - 1];
+  return `
+  <section class="card" style="display:grid;gap:10px;padding:14px 20px">
+    <div class="row"><h1 style="font-size:40px">제${r}차 기후 정상회의 · ${YEAR0 + (r - 1) * 10}년</h1><span class="note">방 ${H.code} <span class="conn pill">연결됨</span></span></div>
+    <div class="row"><div class="phasebar">${["pledge", "decide", "result"].map(p => `<span class="${p === s.phase ? "on" : ""}">${phaseName(p)}</span>`).join("")}</div><span>이 단계 경과 <span class="bigclock" id="phaseClock">0:00</span></span></div>
+  </section>
+  <div class="stage">
+    <section class="card thermo"><span class="eyebrow">지구 평균 기온(산업 혁명 이전 대비)</span><div class="temp" id="tempNow"></div><div id="thermo"></div><span class="note" id="emitNow"></span></section>
+    <div style="display:grid;gap:12px">
+      <section class="card" style="display:grid;gap:10px;padding:14px 18px"><div id="phaseGuide"></div><div style="overflow-x:auto"><table class="tbl" id="ctable"></table></div><div class="actions" id="hActs"></div></section>
+      <section class="card" style="display:grid;gap:8px;padding:14px 18px"><div class="factcard"><b>${esc(f.h)}</b><span>${esc(f.b)}</span></div><div id="impactBox"></div></section>
+    </div>
+  </div>`;
+}
+function hostEndHTML() {
+  return `<section class="card hero"><span class="eyebrow">방 ${H.code} · 최종 결과</span><h1 id="endTitle"></h1><p id="endLead" style="font-size:20px"></p></section>
+  <div class="stage"><section class="card thermo"><span class="eyebrow">최종 기온</span><div class="temp" id="tempNow"></div><div id="thermo"></div></section>
+  <section class="card" style="display:grid;gap:10px"><h2>나라별 결과</h2><div style="overflow-x:auto"><table class="tbl" id="ctable"></table></div><p class="note">약속 지킴: 실제 감축 단계가 공개 약속 이상이었던 횟수</p></section></div>
+  <section class="card" style="display:grid;gap:10px"><h2>함께 생각해 보기</h2><ol class="qlist">
+    <li>가장 많은 동전을 모은 나라가 정말 '이긴' 나라일까요? 지구 기온 결과와 함께 생각해 봅시다.</li>
+    <li>약속과 실제 결정이 달랐던 나라가 있었나요? 왜 그런 선택을 했을까요?</li>
+    <li>온실가스를 거의 배출하지 않은 몰디브와 말리가 큰 피해를 입었습니다. 이것은 공정한가요?</li>
+    <li>교토 의정서(선진국만 의무)와 파리 협정(모든 나라 참여) 가운데 어느 방식이 기후 변화를 막는 데 더 효과적일까요? (교과서 183쪽)</li>
+    <li>내가 <b>우리나라 대표</b>로 이 회의에 참석한다면 어떤 입장을 택할지 까닭과 함께 말해 봅시다. (교과서 183쪽 탐구 활동)</li></ol></section>
+  <div class="actions"><button class="btn" id="hAgain" type="button">같은 방에서 다시 하기</button><button class="btn ghost" id="hWipe" type="button">방 기록 지우고 나가기</button></div>`;
+}
+function bindHost() {
+  const s = st();
+  if (!s.phase || s.phase === "lobby") {
+    try { new QRCode($("qr"), { text: studentLink(H.code), width: 210, height: 210, correctLevel: QRCode.CorrectLevel.M }); } catch (e) { $("qr").textContent = "QR 코드를 불러오지 못했습니다. 링크를 복사해 나눠 주세요."; }
+    $("copyLink").onclick = () => { const i = $("linkOut"); i.select(); try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand("copy"); } $("copyLink").textContent = "복사됨"; };
+    $("hStart").onclick = () => {
+      const empty = G.filter(g => !membersOf(g).length);
+      if (empty.length && !confirm(`${empty.map(g => C[g].n).join(", ")}에 아직 아무도 없습니다. 빈 나라는 매번 '그대로 배출'로 처리됩니다. 시작할까요?`)) return;
+      const coins = {}; G.forEach(g => coins[g] = C[g].s);
+      dbReq(rk(), "PATCH", { coins, pledge: null, dec: null, quiz: null, res: null, state: { phase: "pledge", round: 1, T: T0, id: Date.now() } });
+    };
+  }
+  const w = $("hWipe"); if (w) w.onclick = async () => { if (!confirm("이 방의 기록을 모두 지울까요? 학생 화면도 처음으로 돌아갑니다.")) return; clearInterval(H.ticker); if (es) es.close(); await dbReq(rk(), "DELETE").catch(() => {}); goHome(); };
+  const a = $("hAgain"); if (a) a.onclick = () => dbReq(rk(), "PATCH", { coins: null, pledge: null, dec: null, quiz: null, res: null, state: { phase: "lobby", round: 0, T: T0, id: Date.now() } });
+}
+function fillLobby() {
+  $("lobbyC").innerHTML = G.map(g => { const m = membersOf(g); return countryCard(g, `<span>${m.length ? m.map(p => esc(p.n)).join(", ") : '<span class="note">아직 없음</span>'}</span>`); }).join("");
+  $("hostCount").textContent = `들어온 학생 ${Object.keys(mirror.players || {}).length}명`;
+}
+function fillRound() {
+  const s = st(), r = s.round, res = s.phase === "result" ? resOf(r) : null;
+  const T = res ? res.T1 : s.T;
+  $("tempNow").textContent = fmtT(T); $("tempNow").style.color = tempCol(T);
+  $("thermo").innerHTML = thermoSVG(T, histTemps());
+  $("emitNow").textContent = res ? `이번 10년 세계 배출량 ${res.E} (모두 '그대로'였다면 ${G.reduce((a, g) => a + C[g].e, 0)})` : "";
+  const guide = {
+    pledge: `<b>협상·공약 단계</b> — 대표단끼리 자유롭게 이야기한 뒤, 이번 10년 동안 얼마나 줄일지 <b>공개 약속</b>을 올립니다. 약속은 모두에게 보입니다.`,
+    decide: `<b>비밀 결정 단계</b> — 각 나라가 실제 감축 단계와 기후 기금을 몰래 정합니다. 결정한 나라에는 ✔가 표시됩니다. 지구 지식 문제를 맞히면 1동전을 더 받습니다.`,
+    result: `<b>결과 공개</b> — 실제 결정과 약속을 비교하고, 기온 상승에 따른 피해를 확인합니다.`,
+  }[s.phase];
+  $("phaseGuide").innerHTML = `<p>${guide}</p>`;
+  let th = `<tr><th>나라</th><th>대표단</th><th>동전</th><th>공개 약속</th>`;
+  if (s.phase === "decide") th += `<th>결정</th><th>지식 문제</th>`;
+  if (res) th += `<th>실제 결정</th><th>약속</th><th>기금</th><th>감축 비용</th><th>피해</th><th>지원</th><th>변화</th>`;
+  th += `</tr>`;
+  const rows = G.map(g => {
+    const pl = pledgeOf(r, g), m = membersOf(g).length;
+    let row = `<tr><td>${cname(g)}</td><td>${m}명</td><td class="big">${res ? res.c[g].after : coinsOf(g)}</td><td>${pl === undefined ? '<span class="note">-</span>' : LV[pl].n}</td>`;
+    if (s.phase === "decide") { const d = decOf(r, g), q = quizOf(r, g); row += `<td>${d ? "✔ 결정함" : '<span class="note">고민 중</span>'}</td><td>${q ? (q.ok ? "정답 +1" : "오답") : "-"}</td>`; }
+    if (res) {
+      const x = res.c[g], kept = x.pl === null ? '<span class="note">약속 없음</span>' : x.lv >= x.pl ? '<span class="kept">지킴</span>' : '<span class="broke">어김</span>';
+      row += `<td>${LV[x.lv].n}${x.none ? '<br><span class="note">(미결정)</span>' : ""}</td><td>${kept}</td><td>${x.fund ? "-" + x.fund : 0}</td><td>${x.cost ? "-" + x.cost : 0}</td><td class="${x.dmg ? "neg" : ""}">${x.dmg ? "-" + x.dmg : 0}</td><td class="${x.aid ? "pos" : ""}">${x.aid ? "+" + x.aid : 0}</td><td class="${x.after - x.before < 0 ? "neg" : "pos"}">${sgn(x.after - x.before)}</td>`;
+    }
+    return row + `</tr>`;
+  }).join("");
+  $("ctable").innerHTML = th + rows;
+  const lvl = Math.min(IMPACT.length, Math.floor(T)), imp = lvl >= 1 ? IMPACT[lvl - 1] : null;
+  $("impactBox").innerHTML = res ? `<div class="impact"><b>${fmtT(res.T0)} → ${fmtT(res.T1)}</b> (${sgn(Math.round((res.T1 - res.T0) * 100) / 100)}℃) · 기온이 1.0℃를 넘은 만큼 모든 나라가 피해를 입고, 취약한 나라일수록 피해가 큽니다.${imp ? `<br><span class="note">『기후 변화의 경제학』의 예측(교과서 182쪽) — ${imp[0]}℃ 상승: ${esc(imp[1])}${IMPACT[lvl] ? ` / ${IMPACT[lvl][0]}℃ 상승: ${esc(IMPACT[lvl][1])}` : ""}</span>` : ""}</div>` : "";
+  const acts = $("hActs");
+  if (s.phase === "pledge") acts.innerHTML = `<button class="btn warm" id="hNext" type="button">비밀 결정 받기</button>`;
+  else if (s.phase === "decide") acts.innerHTML = `<button class="btn warm" id="hNext" type="button">결과 공개</button><span class="note">결정하지 않은 나라는 '그대로 배출'로 처리됩니다.</span>`;
+  else acts.innerHTML = r < ROUNDS ? `<button class="btn warm" id="hNext" type="button">제${r + 1}차 정상회의로 (${YEAR0 + r * 10}년)</button>` : `<button class="btn warm" id="hNext" type="button">최종 결과 발표</button>`;
+  $("hNext").onclick = hostNext;
+}
+let busy = false;
+async function hostNext() {
+  if (busy) return; busy = true;
+  const s = st(), r = s.round;
+  try {
+    if (s.phase === "pledge") await dbReq(`${rk()}/state`, "PATCH", { phase: "decide" });
+    else if (s.phase === "decide") {
+      const res = computeRound(r), coins = {}; G.forEach(g => coins[g] = res.c[g].after);
+      await dbReq(rk(), "PATCH", { [`res/r${r}`]: res, coins, state: { ...s, phase: "result", T: res.T1 } });
+    } else if (r < ROUNDS) await dbReq(`${rk()}/state`, "PATCH", { phase: "pledge", round: r + 1 });
+    else {
+      const ok = s.T <= GOAL, coins = {}; G.forEach(g => coins[g] = coinsOf(g) + (ok ? BONUS : 0));
+      await dbReq(rk(), "PATCH", { coins, state: { ...s, phase: "end", bonus: ok ? BONUS : 0 } });
+    }
+  } catch (e) { alert("저장하지 못했습니다. 인터넷 연결을 확인하세요."); }
+  busy = false;
+}
+function endStats() {
+  return G.map(g => {
+    let kept = 0, promised = 0, emit = 0, dmg = 0, fund = 0;
+    for (let r = 1; r <= ROUNDS; r++) { const x = (resOf(r) || { c: {} }).c[g]; if (!x) continue; if (x.pl !== null && x.pl !== undefined) { promised++; if (x.lv >= x.pl) kept++; } emit += C[g].e * (1 - LV[x.lv].p / 100); dmg += x.dmg; fund += x.fund; }
+    return { g, coins: coinsOf(g), kept, promised, emit: Math.round(emit * 10) / 10, dmg, fund };
+  }).sort((a, b) => b.coins - a.coins);
+}
+function fillEnd() {
+  const s = st(), T = s.T, ok = T <= GOAL;
+  $("tempNow").textContent = fmtT(T); $("tempNow").style.color = tempCol(T);
+  $("thermo").innerHTML = thermoSVG(T, histTemps());
+  $("endTitle").textContent = ok ? `목표 달성! 지구 기온 ${fmtT(T)}` : `목표 실패… 지구 기온 ${fmtT(T)}`;
+  $("endLead").innerHTML = ok ? `여섯 나라가 힘을 모아 기온 상승을 ${GOAL.toFixed(1)}℃ 이하로 막았습니다. 모든 나라가 보너스 ${BONUS}동전을 받았습니다.` : `기온이 ${GOAL.toFixed(1)}℃를 넘었습니다. 각 나라의 선택이 모여 지구 전체의 결과가 되었습니다. 보너스는 없습니다.`;
+  $("ctable").innerHTML = `<tr><th>순위</th><th>나라</th><th>최종 동전</th><th>약속 지킴</th><th>총 배출량</th><th>총 피해</th><th>낸 기금</th></tr>` + endStats().map((x, i) => `<tr><td>${i + 1}</td><td style="text-align:left">${cname(x.g)}</td><td class="big">${x.coins}</td><td>${x.kept}/${x.promised}</td><td>${x.emit}</td><td class="neg">${x.dmg ? "-" + x.dmg : 0}</td><td>${x.fund}</td></tr>`).join("");
+}
+
+/* =================== 학생 =================== */
+const ME = { n: "", g: 0 };
+function joinView(code) {
+  NET.code = code; NET.pid = myPid(); NET.role = "student";
+  let saved = null; try { saved = JSON.parse(localStorage.getItem("cs-me-" + code)); } catch (e) {}
+  let pick = saved ? saved.g : 0;
+  render(`<section class="card hero"><span class="eyebrow">방 ${code} · 기후 정상회의 <span class="conn pill">연결 중</span></span><h2>별명과 대표할 나라를 고르세요</h2>
+    <label class="eyebrow" for="nick">별명(실명 대신)</label><input id="nick" maxlength="8" placeholder="예: 3번 기후대사" value="${esc(saved ? saved.n : "")}">
+    <span class="eyebrow">우리 모둠이 대표할 나라</span><div class="countries" id="cPick"></div>
+    <div class="actions"><button class="btn warm" id="join" type="button">회의장 입장</button><button class="btn ghost" id="back" type="button">처음으로</button></div>
+    <p class="note" id="joinNote">선생님이 정해 준 모둠의 나라를 고르세요.</p></section>`);
+  const draw = () => { $("cPick").innerHTML = G.map(g => `<button type="button" class="ctry" data-g="${g}" aria-pressed="${g === pick}" style="border-top:8px solid ${C[g].col}"><span class="nm">${cname(g)}</span><span class="note">${C[g].kind} · ${membersOf(g).length}명 입장</span></button>`).join(""); document.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { pick = +b.dataset.g; draw(); }); };
+  subscribe(code, () => { if (!mirror.state) { const n = $("joinNote"); if (n) n.textContent = "방을 찾을 수 없습니다. 방 번호를 확인하세요."; return; } if ($("cPick")) draw(); });
+  draw();
+  $("back").onclick = goHome;
+  $("join").onclick = async () => {
+    const n = $("nick").value.trim().slice(0, 8);
+    if (!n) return toast("별명을 입력하세요."); if (!pick) return toast("나라를 고르세요."); if (!mirror.state) return toast("방을 찾을 수 없습니다.");
+    ME.n = n; ME.g = pick; try { localStorage.setItem("cs-me-" + code, JSON.stringify(ME)); } catch (e) {}
+    $("join").disabled = true;
+    try { await dbReq(`${rk()}/players/${NET.pid}`, "PUT", { n, g: pick }); } catch (e) { $("join").disabled = false; return toast("들어가지 못했습니다. 연결을 확인하세요."); }
+    render(`<div id="sbar" class="sbar"></div><div id="sBody" style="display:grid;gap:14px"></div>`);
+    onRoom = renderStudent; renderStudent();
+  };
+}
+const SV = { key: null, lv: null, fund: 0 };
+function briefHTML() {
+  const c = C[ME.g];
+  return `<section class="card" style="display:grid;gap:10px;border-top:8px solid ${c.col}"><div class="row"><h3>${cname(ME.g)} 대표단</h3><span class="tag" style="background:${c.col}">${c.kind}</span></div>
+    <div class="stats"><div class="stat"><span>우리 동전</span><b>${coinsOf(ME.g)}</b></div><div class="stat"><span>10년 배출량</span><b>${c.e}</b></div><div class="stat"><span>10년 수입</span><b>+${c.inc}</b></div><div class="stat"><span>피해 취약도</span><b>${c.v}</b></div></div>
+    <p class="stance">${esc(c.st)}</p>
+    <p class="note">감축 비용: 한 단계마다 ${c.c}동전 · 피해: (지구 기온 − 1.0℃) × 취약도만큼 매번 동전을 잃습니다.${AID.includes(ME.g) ? " 기후 기금은 몰디브와 말리에 나누어 지원됩니다." : ""}</p></section>`;
+}
+function renderStudent() {
+  const s = st(), sb = $("sbar"), body = $("sBody"); if (!sb) return;
+  if (!mirror.state) { body.innerHTML = `<section class="card"><h2>방이 닫혔습니다</h2><div class="actions"><button class="btn" id="toHome" type="button">처음으로</button></div></section>`; sb.innerHTML = ""; $("toHome").onclick = goHome; return; }
+  const r = s.round || 0, T = s.T ?? T0;
+  sb.style.background = C[ME.g].col;
+  sb.innerHTML = `<b>${C[ME.g].f} ${esc(C[ME.g].n)} · ${esc(ME.n)}</b><span>${r ? `제${r}차 회의 · ${YEAR0 + (r - 1) * 10}년 · ${phaseName(s.phase) || ""}` : "대기 중"}</span><span>지구 기온 <b style="font-size:20px">${fmtT(s.phase === "result" && resOf(r) ? resOf(r).T1 : T)}</b></span>`;
+  const key = `${s.id}:${s.phase}:${r}`;
+  if (key !== SV.key) { SV.key = key; const d = decOf(r, ME.g); SV.lv = d ? d.lv : (pledgeOf(r, ME.g) ?? null); SV.fund = d ? d.fund : 0; }
+  if (!s.phase || s.phase === "lobby") { body.innerHTML = `<section class="card"><h2>회의 시작을 기다리는 중</h2><p>우리 대표단: ${membersOf(ME.g).map(p => esc(p.n)).join(", ")}</p><div class="actions"><button class="btn ghost" id="re" type="button">나라·별명 바꾸기</button></div></section>${briefHTML()}`; $("re").onclick = () => joinView(NET.code); return; }
+  if (s.phase === "end") return studentEnd();
+  if (s.phase === "pledge") {
+    const pl = pledgeOf(r, ME.g);
+    body.innerHTML = `<section class="card" style="display:grid;gap:10px"><h2>협상하고 공개 약속하기</h2><p>다른 나라 대표단과 자유롭게 이야기해 보세요. 그다음 이번 10년 동안 얼마나 줄일지 <b>모두가 볼 수 있는 약속</b>을 올립니다. (모둠에서 한 명만 눌러도 됩니다)</p>
+      <div class="levels">${LV.map((l, i) => `<button type="button" class="lv" data-pl="${i}" aria-pressed="${pl === i}"><b>${l.n}</b><span>배출 ${l.p}% 감소</span><span>비용 ${roundCost(ME.g, i)}</span></button>`).join("")}</div>
+      <p class="note">${pl === undefined ? "아직 약속하지 않았습니다." : `우리 약속: <b>${LV[pl].n}</b> (바꿀 수 있습니다)`}</p></section>
+      <section class="card" style="display:grid;gap:8px"><h3>다른 나라의 약속</h3><table class="tbl">${G.map(g => `<tr><td>${cname(g)}</td><td>${pledgeOf(r, g) === undefined ? '<span class="note">아직</span>' : LV[pledgeOf(r, g)].n}</td><td class="note">${C[g].kind}</td></tr>`).join("")}</table></section>${briefHTML()}`;
+    body.querySelectorAll("[data-pl]").forEach(b => b.onclick = () => dbReq(`${rk()}/pledge/r${r}/${ME.g}`, "PUT", +b.dataset.pl).catch(() => toast("저장하지 못했습니다.")));
+    return;
+  }
+  if (s.phase === "decide") return studentDecide(r);
+  if (s.phase === "result") return studentResult(r);
+}
+function studentDecide(r) {
+  const body = $("sBody"), d = decOf(r, ME.g), pl = pledgeOf(r, ME.g), q = quizOf(r, ME.g);
+  const coins = coinsOf(ME.g), c = C[ME.g];
+  const lv = SV.lv, cost = lv === null ? 0 : roundCost(ME.g, lv);
+  const maxFund = Math.max(0, Math.min(3, coins + c.inc - cost));
+  if (SV.fund > maxFund) SV.fund = maxFund;
+  const qi = ((st().id || 0) + r * 7 + ME.g * 3) % QZ.length, qq = QZ[qi];
+  const order = [0, 1, 2, 3].sort((a, b) => ((a * 7 + r + ME.g) % 4) - ((b * 7 + r + ME.g) % 4));
+  body.innerHTML = `<section class="card" style="display:grid;gap:10px;border-top:8px solid var(--navy)"><h2>비밀 결정</h2>
+    <p>실제로 얼마나 줄일지 정하세요. <b>다른 나라에는 결과 공개 전까지 보이지 않습니다.</b>${pl !== undefined ? ` 우리 공개 약속은 <b>${LV[pl].n}</b>였습니다.` : ""}</p>
+    <div class="levels">${LV.map((l, i) => `<button type="button" class="lv" data-lv="${i}" aria-pressed="${lv === i}"><b>${l.n}</b><span>배출 ${l.p}% 감소</span><span>비용 ${roundCost(ME.g, i)}</span></button>`).join("")}</div>
+    ${AID.includes(ME.g) ? "" : `<div class="row"><span><b>기후 기금</b> <span class="note">(몰디브·말리 지원, 0~3동전)</span></span><div class="actions">${[0, 1, 2, 3].map(f => `<button type="button" class="lv" style="min-width:52px" data-fund="${f}" aria-pressed="${SV.fund === f}" ${f > maxFund ? "disabled" : ""}><b>${f}</b></button>`).join("")}</div></div>`}
+    <div class="preview"><div>수입 <b>+${c.inc}</b></div><div>감축 비용 <b>${cost ? "-" + cost : 0}</b></div><div>기금 <b>${SV.fund ? "-" + SV.fund : 0}</b></div><div>피해 <b>?</b> <span class="note">(지구 기온에 따라)</span></div></div>
+    <div class="actions"><button class="btn warm" id="saveDec" type="button" ${lv === null ? "disabled" : ""}>${d ? "결정 고치기" : "결정 제출"}</button><span class="note">${d ? `제출함: ${LV[d.lv].n}${d.fund ? ` · 기금 ${d.fund}` : ""} (${esc(d.by || "")})` : "아직 제출하지 않았습니다. 제출하지 않으면 '그대로 배출'로 처리됩니다."}</span></div></section>
+  <section class="card" style="display:grid;gap:10px"><h3>지구 지식 문제 <span class="note">(모둠에서 한 번, 맞히면 +1동전)</span></h3><p style="font-weight:700">${esc(qq[0])}</p>
+    <div class="opts">${order.map((k, n) => `<button type="button" class="opt${q ? (k === 0 ? " right" : (q.pick === k ? " wrong" : "")) : ""}" data-qk="${k}" ${q ? "disabled" : ""}>${"①②③④"[n]} ${esc(qq[1][k])}</button>`).join("")}</div>
+    ${q ? `<div class="msg ${q.ok ? "ok" : "bad"}">${q.ok ? "정답! 결과 공개 때 1동전을 더 받습니다." : "아쉬워요. 정답을 확인하세요."} <span class="note">(${esc(q.by || "")})</span></div><p class="note">${esc(qq[2])}</p>` : ""}</section>${briefHTML()}`;
+  body.querySelectorAll("[data-lv]").forEach(b => b.onclick = () => { SV.lv = +b.dataset.lv; studentDecide(r); });
+  body.querySelectorAll("[data-fund]").forEach(b => b.onclick = () => { SV.fund = +b.dataset.fund; studentDecide(r); });
+  $("saveDec").onclick = () => dbReq(`${rk()}/dec/r${r}/${ME.g}`, "PUT", { lv: SV.lv, fund: SV.fund, by: ME.n }).then(() => toast("결정을 제출했습니다.")).catch(() => toast("저장하지 못했습니다."));
+  body.querySelectorAll("[data-qk]").forEach(b => b.onclick = () => { if (quizOf(r, ME.g)) return; const k = +b.dataset.qk; dbReq(`${rk()}/quiz/r${r}/${ME.g}`, "PUT", { ok: k === 0, pick: k, by: ME.n }).catch(() => toast("저장하지 못했습니다.")); });
+}
+function studentResult(r) {
+  const res = resOf(r), body = $("sBody"); if (!res) { body.innerHTML = `<section class="card"><p>결과를 계산하는 중입니다…</p></section>`; return; }
+  const x = res.c[ME.g];
+  const kept = x.pl === null ? "공개 약속을 하지 않았습니다." : x.lv >= x.pl ? "약속을 지켰습니다." : "약속보다 적게 줄였습니다.";
+  body.innerHTML = `<section class="card hero"><span class="eyebrow">제${r}차 회의 결과</span><h2>지구 기온 ${fmtT(res.T0)} → <span style="color:${tempCol(res.T1)}">${fmtT(res.T1)}</span></h2>
+    <p>우리 결정: <b>${LV[x.lv].n}</b>${x.none ? " (제출하지 않아 자동 처리)" : ""} · ${kept}</p>
+    <div class="preview"><div>수입 <b>+${x.inc}</b></div><div>감축 비용 <b>${x.cost ? "-" + x.cost : 0}</b></div><div>기금 <b>${x.fund ? "-" + x.fund : 0}</b></div><div>기후 피해 <b class="neg">${x.dmg ? "-" + x.dmg : 0}</b></div><div>기금 지원 <b class="pos">${x.aid ? "+" + x.aid : 0}</b></div><div>지식 보너스 <b>${x.quiz ? "+1" : 0}</b></div></div>
+    <p style="font-size:20px">우리 동전 ${x.before} → <b>${x.after}</b></p></section>
+  <section class="card" style="display:grid;gap:8px"><h3>모든 나라의 실제 결정</h3><table class="tbl"><tr><th>나라</th><th>약속</th><th>실제</th><th>동전</th></tr>${G.map(g => { const y = res.c[g]; return `<tr><td>${cname(g)}</td><td>${y.pl === null ? "-" : LV[y.pl].n}</td><td class="${y.pl !== null && y.lv < y.pl ? "broke" : ""}">${LV[y.lv].n}</td><td>${y.after}</td></tr>`; }).join("")}</table><p class="note">세계 배출량 ${res.E} · 다음 회의를 기다리는 동안 대표단끼리 다음 전략을 이야기해 보세요.</p></section>`;
+}
+function studentEnd() {
+  const s = st(), stats = endStats(), me = stats.find(x => x.g === ME.g), rank = stats.indexOf(me) + 1;
+  $("sBody").innerHTML = `<section class="card hero"><span class="eyebrow">최종 결과</span><h2>지구 기온 <span style="color:${tempCol(s.T)}">${fmtT(s.T)}</span> — ${s.T <= GOAL ? "목표 달성!" : "목표 실패"}</h2>
+    <p>${cname(ME.g)}: 최종 동전 <b>${me.coins}</b> (${rank}위) · 약속 지킴 ${me.kept}/${me.promised} · 총 피해 ${me.dmg}</p>
+    <table class="tbl"><tr><th>나라</th><th>동전</th><th>약속 지킴</th></tr>${stats.map(x => `<tr><td>${cname(x.g)}</td><td>${x.coins}</td><td>${x.kept}/${x.promised}</td></tr>`).join("")}</table>
+    <p class="note">전자칠판의 '함께 생각해 보기' 질문으로 모둠 토의를 해 보세요.</p></section>`;
+}
+
+/* 시작 */
+(function boot() { const hc = params.get("host"); if (hc && /^\d{4}$/.test(hc)) return openHost(hc); home(); })();
+</script>
+</body>
+</html>
