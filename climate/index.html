@@ -187,6 +187,12 @@ const params = new URLSearchParams(location.search);
 const DB = (u => /^https?:\/\/[a-z0-9.:-]+$/i.test(u) && /firebaseio\.com|firebasedatabase\.app|localhost/.test(u) ? u : "")((params.get("db") || "").replace(/\/+$/, "")) || "https://gwangcheon-racing-default-rtdb.asia-southeast1.firebasedatabase.app";
 const SITE = "https://wjsrhdwlfl-eng.github.io/gwangcheon-games/climate/";
 function dbReq(path, method, val) {
+  if (NET.local) {   // 혼자 체험하기: 서버 없이 이 기기 안에서만 처리
+    const rel = path.split("/").slice(2).join("/"), v = val === undefined ? null : JSON.parse(JSON.stringify(val));
+    if (method === "GET") return Promise.resolve(null);
+    if (method === "PATCH") for (const k in v) applyAt("/" + (rel ? rel + "/" : "") + k, v[k], false); else applyAt("/" + rel, method === "DELETE" ? null : v, false);
+    setTimeout(() => onRoom(), 0); return Promise.resolve(v);
+  }
   let url = `${DB}/${path}.json`;
   if (method === "GET") return fetch(url).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
   if (method !== "POST") url += `?x-http-method-override=${method}`;
@@ -212,7 +218,7 @@ function applyAt(path, data, merge) {
   if (merge) { if (!o[last] || typeof o[last] !== "object") o[last] = {}; for (const k in data) { if (data[k] === null) delete o[last][k]; else o[last][k] = data[k]; } }
   else { if (data === null) delete o[last]; else o[last] = data; }
 }
-const NET = { code: null, pid: null, role: null };
+const NET = { code: null, pid: null, role: null, local: false };
 const rk = () => `rooms/${roomKey(NET.code)}`;
 function myPid() { let p = null; try { p = localStorage.getItem("cs-pid"); } catch (e) {} if (!p) { p = Math.random().toString(36).slice(2, 10); try { localStorage.setItem("cs-pid", p); } catch (e) {} } return p; }
 const studentLink = code => `${location.origin}${location.pathname}?room=${code}${params.get("db") ? "&db=" + encodeURIComponent(params.get("db")) : ""}`;
@@ -249,7 +255,7 @@ function computeRound(r) {
 
 /* =================== 첫 화면 =================== */
 function home() {
-  NET.role = null; document.body.classList.remove("hostmode");
+  NET.role = null; NET.local = false; clearInterval(H.ticker); document.body.classList.remove("hostmode");
   const code = params.get("room");
   if (code && /^\d{4}$/.test(code)) return joinView(code);
   render(`
@@ -269,13 +275,13 @@ function home() {
     <div class="card" style="display:grid;gap:10px"><h2>학생</h2><p>선생님이 알려 준 <b>방 번호</b>를 입력하거나 QR 코드를 찍어 들어오세요.</p>
       <div class="actions"><input id="codeIn" inputmode="numeric" maxlength="4" placeholder="방 번호 4자리" style="flex:1 1 140px"><button class="btn" id="goCode" type="button">들어가기</button></div></div>
     <div class="card" style="display:grid;gap:10px"><h2>선생님</h2><p>전자칠판에서 방을 만들면 방 번호·QR 코드와 회의 진행판(온도계·나라별 현황)이 나옵니다.</p>
-      <div class="actions"><button class="btn" id="mkRoom" type="button">방 만들기</button></div></div>
+      <div class="actions"><button class="btn" id="mkRoom" type="button">방 만들기</button><button class="btn ghost" id="solo" type="button">혼자 체험하기</button></div><p class="note">혼자 체험하기: 한 나라를 맡아 AI 5개국과 5차 회의를 끝까지 해 봅니다. 학생 화면과 전자칠판 화면을 한꺼번에 볼 수 있습니다.</p></div>
   </section>
   <section class="card" style="display:grid;gap:10px"><h2>참가국</h2><div class="countries">${G.map(g => countryCard(g)).join("")}</div></section>
   <p class="note" style="text-align:center">비상교육 중학교 사회②(최성길 외) Ⅹ단원 · 광천중학교 사회과</p>`);
   $("goCode").onclick = () => { const c = $("codeIn").value.trim(); if (/^\d{4}$/.test(c)) joinView(c); else toast("방 번호 4자리를 입력하세요."); };
   $("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") $("goCode").click(); });
-  $("mkRoom").onclick = createRoom;
+  $("mkRoom").onclick = createRoom; $("solo").onclick = soloPick;
 }
 function countryCard(g, extra = "") {
   const c = C[g];
@@ -536,6 +542,43 @@ function studentEnd() {
     <p>${cname(ME.g)}: 최종 동전 <b>${me.coins}</b> (${rank}위) · 약속 지킴 ${me.kept}/${me.promised} · 총 피해 ${me.dmg}</p>
     <table class="tbl"><tr><th>나라</th><th>동전</th><th>약속 지킴</th></tr>${stats.map(x => `<tr><td>${cname(x.g)}</td><td>${x.coins}</td><td>${x.kept}/${x.promised}</td></tr>`).join("")}</table>
     <p class="note">전자칠판의 '함께 생각해 보기' 질문으로 모둠 토의를 해 보세요.</p></section>`;
+}
+
+
+/* =================== 혼자 체험하기 (AI 5개국) =================== */
+const AIP = { 1: { pl: 2, lv: 1, fund: 1 }, 2: { pl: 3, lv: 2, fund: 2 }, 3: { pl: 1, lv: 0, fund: 0 }, 4: { pl: 1, lv: 1, fund: 0 }, 5: { pl: 3, lv: 3, fund: 0 }, 6: { pl: 2, lv: 2, fund: 0 } };
+const AI = { last: null };
+function soloPick() {
+  render(`<section class="card hero"><span class="eyebrow">혼자 체험하기</span><h2>어느 나라의 대표가 되어 볼까요?</h2><p>나머지 다섯 나라는 AI가 맡습니다. AI는 저마다 성향이 있고, <b>내가 지난 회의에서 많이 줄였으면 따라서 더 줄이고, 줄이지 않았으면 덜 줄입니다.</b></p>
+    <div class="countries">${G.map(g => `<button type="button" class="ctry" data-solo="${g}" style="border-top:8px solid ${C[g].col}"><span class="nm">${cname(g)}</span><span class="note">${C[g].kind} · 배출 ${C[g].e} · 수입 ${C[g].inc} · 취약도 ${C[g].v}</span></button>`).join("")}</div>
+    <div class="actions"><button class="btn ghost" id="back" type="button">처음으로</button></div></section>`);
+  document.querySelectorAll("[data-solo]").forEach(b => b.onclick = () => soloStart(+b.dataset.solo));
+  $("back").onclick = home;
+}
+function soloStart(g) {
+  if (es) { es.close(); es = null; }
+  NET.local = true; NET.role = "student"; NET.code = "0000"; NET.pid = "me"; H.code = "체험"; H.phaseKey = null; AI.last = null; SV.key = null;
+  ME.n = "나"; ME.g = g;
+  const coins = {}, players = { me: { n: "나", g } }; G.forEach(x => { coins[x] = C[x].s; if (x !== g) players["ai" + x] = { n: "AI", g: x }; });
+  mirror = { state: { phase: "pledge", round: 1, T: T0, id: Date.now() }, coins, players };
+  render(`<section class="msg info">혼자 체험하기입니다. 위쪽은 학생이 보는 화면, 아래쪽은 전자칠판에 띄우는 선생님 화면입니다. 실제 수업에서는 선생님이 아래 화면의 노란 버튼으로 단계를 넘깁니다. <button type="button" class="btn ghost" id="soloQuit" style="padding:2px 12px;margin-left:8px">그만하기</button></section>
+    <h2>① 학생 화면 — ${cname(g)} 대표단</h2><div id="sbar" class="sbar" style="position:static"></div><div id="sBody" style="display:grid;gap:14px"></div>
+    <h2 style="margin-top:10px">② 선생님 화면 — 전자칠판</h2><div id="hostRoot" style="display:grid;gap:14px"></div>`);
+  $("soloQuit").onclick = home;
+  onRoom = () => { if (!NET.local) return; if (!mirror.state || st().phase === "lobby") return home(); aiAct(); renderStudent(); renderHost(); };
+  clearInterval(H.ticker); H.ticker = setInterval(() => { const el = $("phaseClock"); if (el) { const s = Math.floor((Date.now() - H.since) / 1000); el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; } }, 1000);
+  onRoom();
+}
+function aiAct() {
+  const s = st(), r = s.round, key = s.phase + ":" + r; if (AI.last === key) return; AI.last = key;
+  const others = G.filter(g => g !== ME.g);
+  if (s.phase === "pledge") { mirror.pledge = mirror.pledge || {}; const p = mirror.pledge["r" + r] = mirror.pledge["r" + r] || {}; others.forEach(g => p[g] = AIP[g].pl); }
+  if (s.phase === "decide") {
+    const prev = r > 1 ? resOf(r - 1) : null, my = prev ? prev.c[ME.g].lv : 1, adj = my >= 2 ? 1 : my === 0 ? -1 : 0;
+    mirror.dec = mirror.dec || {}; mirror.quiz = mirror.quiz || {};
+    const d = mirror.dec["r" + r] = mirror.dec["r" + r] || {}, q = mirror.quiz["r" + r] = mirror.quiz["r" + r] || {};
+    others.forEach(g => { const afford = Math.max(0, Math.floor((coinsOf(g) + C[g].inc) / C[g].c)); const lv = Math.max(0, Math.min(3, AIP[g].lv + adj, afford)); d[g] = { lv, fund: AID.includes(g) ? 0 : AIP[g].fund, by: "AI" }; q[g] = { ok: Math.random() < .6, pick: 0, by: "AI" }; });
+  }
 }
 
 /* 시작 */
